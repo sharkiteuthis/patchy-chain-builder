@@ -76,6 +76,10 @@ class patchy_chain(object):
         self.dphi = np.pi/6
         self.dtheta = np.pi/6
 
+    # rotational degree of freedom between the two patches
+    def _get_patch_axis_rotation_angle():
+        return np.random.rand() * 2 * np.pi
+
     def _choose_radius(self):
         #bound this so we are guaranteed to have correct cell lists
         r = np.random.normal(self.r_avg,self.r_std)
@@ -89,7 +93,7 @@ class patchy_chain(object):
     # "Introduce a little anarchy. Upset the established order, and
     # everything becomes chaos. I'm an agent of chaos. Oh, and you know the
     # thing about chaos? It's fair!"
-    def _get_random_offset_spherical(self):
+    def _get_random_offset(self):
         #bound this so that dr > 0 and we are guaranteed to have correct cell lists
         dr = np.random.normal(self.dr_avg,self.dr_std)
         while dr < 0 or np.abs(self.dr_avg-dr) > self.normal_cutoff * self.dr_std:
@@ -99,7 +103,7 @@ class patchy_chain(object):
         dphi = np.random.normal(0,self.dphi)
         dtheta = np.random.normal(0,self.dtheta)
 
-        return np.asarray([dr,dtheta,dphi])
+        return spherical_to_euclid(np.asarray([dr,dtheta,dphi]))
 
     def _generate_cells_to_check(self,c):
         #TIP: if reducing cutoff range, implement the below check
@@ -143,9 +147,14 @@ class patchy_chain(object):
 
     def make_new_random_particle(self, p_orig, ndx_patch):
         p_new = particle(self._choose_radius(), self.p_ternary_coordination)
-        p_new.set_position(p_orig.get_system_patch_pos(ndx_patch), \
-                            self._get_random_offset_spherical())
-#TODO: i forgot an entire rotational degree of freedom...
+
+        #this is the rotational degree of freedom that the patch has about the
+        # axis connecting the centers of the particles
+        beta = self._get_patch_axis_rotation_angle()
+
+        attach_pos = p_orig.get_system_patch_pos(ndx_patch) + self._get_random_offset()
+        p_new.set_position(p_orig.pos, attach_pos, beta)
+
         return p_new
 
     def attempt_add_particle(self):

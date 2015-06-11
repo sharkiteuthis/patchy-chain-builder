@@ -24,10 +24,7 @@ class particle():
     def __init__(self, radius, p_ternary):
         self.radius = radius
         self.pos = np.zeros(3)
-        self.rotation_spherical = np.zeros(3)
-
-        self.deviation_spherical = np.zeros(3)  #random deviation from neighbor patch,
-                                                # only stored for later analysis
+        self.rot_matrix = np.zeros((3,3))
 
 #TODO this is where we can allow coordination 3 particles
         assert p_ternary == 0.0
@@ -38,8 +35,9 @@ class particle():
         return "Particle (" + str(self.coordination) + " patch): " + \
                 "r={0:0.2f} pos={1:.2f},{2:.2f},{3:.2f}".format(self.radius,self.pos[0],self.pos[1],self.pos[2])
 
-    #These are not *system* coordinates, they are local to the particle
-    def get_local_patch_pos_spherical(self,ndx):
+    #These are not *system* coordinates, they are local to the particle. This is
+    # where we define the particle's patchiness
+    def _get_local_patch_pos_spherical(self,ndx):
         if ndx == 0:
             theta = (np.pi)/2 + self.pos[1]
             phi = 0 + self.pos[2]
@@ -52,31 +50,49 @@ class particle():
 
         return np.asarray([self.radius,theta,phi])
 
+    def _get_local_patch_pos_euclidean(self,ndx):
+        return self._get_local_patch_pos_spherical(ndx)
+
+
+    #beta is the rotation about the axis connecting the centers of the particles
+    # i.e. the rotational degree of freedom in the patch
+    def _set_rotation(self, i_patch, x_parent_patch, beta):
+        # define a unit vector a which is normal to the patch vector and the
+        # *negative* of the patch vector of the parent particle (since the axis
+        # we are rotating about is pointing from the center of this particle)
+        axis_patch = -1 * normalize(x_parent_patch)
+        x_local_patch = normalize(_get_local_patch_pos_euclidean(i_patch))
+        a = normalize(np.cross(x_local_patch, axis_patch))
+
+        if np.abs(np.linalg.norm(a)) < EPSILON:
+            R1 = np.eye(3)
+        else:
+            #angle between the two lies between zero and pi
+            alpha = np.arccos(np.dot(x_local_patch, axis_patch))
+            #R1 = get_rotation_matrix_two_vec(x_local_patch, axis_patch)
+            R1 = get_rotation_matrix_axis_angle(a,alpha)
+
+        R2 = get_rotation_matrix_axis_angle(axis_patch,beta)
+
+        self.rot_matrix = np.dot(R2,R1)
+
     #This returns system coordinates
-    def get_system_patch_pos(self,ndx):
-        R = self.get_local_patch_pos_spherical(ndx) + self.rotation
-        return self.pos + spherical_to_euclid(R)
+    def get_global_patch_pos(self,ndx):
+        R = self.get_local_patch_pos_spherical(ndx)
+        X = spherical_to_euclid(R)
+        X_system = np.dot(self.rot_matrix,X)
+        return X_system
 
-#TODO: this is all fucked. and I forgot an entire rotational degree of freedom.
-#TODO: AAADFDDDASHUKLASDFGKLSDAL:I!O!JKLsdfD#$$##%
 
-
-    def _set_rotation(self,i_patch,deviation_spherical):
-        self.rotation_spherical = self.get_local_patch_pos_spherical(i_patch) + \
-                                    deviation_spherical
-        self.rotation_spherical[0] = 0
-        self.rotation_spherical[1] -= np.pi/2
-        self.rotation_spherical[2] -= np.pi
-
-    def set_position(self, x, deviation_spherical):
+    #place the particle so that the center of a random patch is at x_attachment
+    # patch_axis_rotation is the rotational degree of freedom between the patches
+    def set_position(self, x_center, x_patch, patch_axis_rotation):
         i_patch = self.pick_random_patch()
         self.close_patch(i_patch)
 
-        self._set_rotation(i_patch, deviation_spherical)
+        self._set_rotation(i_patch, x_patch, patch_axis_rotation)
 
-        self.pos = self.get_system_patch_pos(i_patch) + x + spherical_to_euclid(deviation_spherical)
-
-        self.deviation_spherical = deviation_spherical
+        self.pos = self.get_system_patch_pos(i_patch) + x_center + x_patch
 
     def pick_random_patch(self):
         assert len(self.open_patches)

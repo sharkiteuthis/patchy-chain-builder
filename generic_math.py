@@ -9,6 +9,9 @@ Date: Tue Jun  9 16:18:39 2015
 import numpy as np                                     #analysis:ignore
 import matplotlib.pyplot as plt                        #analysis:ignore
 
+#define "effectively zero" for e.g. checking norms of vectors
+EPSILON = 1e-15
+
 #theta is zenith measured from z axis (0,pi)
 #phi is azimuthal measured from the x-axis (0,2*pi)
 #i.e. physics convention
@@ -45,3 +48,35 @@ def dist_spherical(s1,s2):
     e2 = spherical_to_euclid(s2)
 
     return dist_euclid(e1,e2)
+
+def normalize(v):
+    norm=np.linalg.norm(v)
+    if norm==0:
+       return v
+    return v/norm
+
+#generates matrix to align a to b - both must be unit vectors
+#def get_rotation_matrix_two_vec(q, u):
+#    a = np.cross(q,u)
+#    ax = a[0]
+#    ay = a[1]
+#    az = a[2]
+#    s = np.linalg.norm(a)
+#    c = np.dot(q,u)
+#    C = 1-c
+#
+#    return np.asarray([[c + ax*ax*C, ax*ay*C - az*s, ax*az*C + ay*s],
+#                       [ay*ax*C + az*s, c + ay*ay*C, ay*az*C - ax*s],
+#                       [az*ax*C - ay*s, az*ay*C + ax*s, c + az*az*C]],dtype='float64')
+
+def get_rotation_matrix_axis_angle(a,alpha):
+    ax = a[0]
+    ay = a[1]
+    az = a[2]
+    s = np.sin(alpha)
+    c = np.cos(alpha)
+    C = 1-c
+
+    return np.asarray([[c + ax*ax*C, ax*ay*C - az*s, ax*az*C + ay*s],
+                       [ay*ax*C + az*s, c + ay*ay*C, ay*az*C - ax*s],
+                       [az*ax*C - ay*s, az*ay*C + ax*s, c + az*az*C]],dtype='float64')
