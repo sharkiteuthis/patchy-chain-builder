@@ -28,7 +28,7 @@ def spherical_to_euclid(s):
 
 def euclid_to_spherical(e):
     assert e.shape == (3,)
-    r = np.sqrt(np.sum(e))
+    r = np.sqrt(np.sum(e**2))
     theta = np.arccos(e[2]/r)
     phi = np.arctan2(e[1],e[0])
     return np.asarray([r,theta,phi])
