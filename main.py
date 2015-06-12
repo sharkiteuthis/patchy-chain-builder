@@ -8,6 +8,7 @@ Date: Tue Jun  9 16:22:15 2015
 
 import numpy as np                                     #analysis:ignore
 import matplotlib.pyplot as plt                        #analysis:ignore
+from mpl_toolkits.mplot3d import Axes3D                #analysis:ignore
 
 from generic_math import *
 from patchy_chain import *

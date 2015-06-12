@@ -73,11 +73,11 @@ class patchy_chain(object):
         self.normal_cutoff = 4          #cutoff at 4, units of std dev
 
         #  *shrug*
-        self.dphi = np.pi/6
-        self.dtheta = np.pi/6
+        self.dphi = np.pi/12
+        self.dtheta = np.pi/12
 
     # rotational degree of freedom between the two patches
-    def _get_patch_axis_rotation_angle():
+    def _get_patch_axis_rotation_angle(self):
         return np.random.rand() * 2 * np.pi
 
     def _choose_radius(self):
@@ -103,13 +103,13 @@ class patchy_chain(object):
         dphi = np.random.normal(0,self.dphi)
         dtheta = np.random.normal(0,self.dtheta)
 
-        return spherical_to_euclid(np.asarray([dr,dtheta,dphi]))
+        return spherical_to_cartesian(np.asarray([dr,dtheta,dphi]))
 
     def _generate_cells_to_check(self,c):
         #TIP: if reducing cutoff range, implement the below check
         assert self.cell_range <= 2
         cell_range_to_check = lambda : itertools.chain(range(-self.cell_range,0),range(self.cell_range+1))
-        #cell_dist = lambda c1,c2 : self.cell_width * dist_euclid(np.asarray(c1), np.asarray(c2))
+        #cell_dist = lambda c1,c2 : self.cell_width * dist_cartesian(np.asarray(c1), np.asarray(c2))
         for i in cell_range_to_check():
             for j in cell_range_to_check():
                 for k in cell_range_to_check():
@@ -121,9 +121,9 @@ class patchy_chain(object):
         new_cell = self.get_cell_list_ndx(p_new)
         for c in self._generate_cells_to_check(new_cell):
             for p in self.cell_dict[c]:
-                if dist_euclid(p_new.pos,p.pos) < (p_new.radius + p.radius):
+                if dist_cartesian(p_new.pos,p.pos) < (p_new.radius + p.radius):
                     print("\tRejecting new particle")
-                    print("\tdist = ",dist_euclid(p_new.pos,p.pos))
+                    print("\tdist = ",dist_cartesian(p_new.pos,p.pos))
                     print("\tradii = ", p_new.radius + p.radius)
                     print("\trejecting due to particle:")
                     print("\t",p)
@@ -152,7 +152,11 @@ class patchy_chain(object):
         # axis connecting the centers of the particles
         beta = self._get_patch_axis_rotation_angle()
 
-        attach_pos = p_orig.get_system_patch_pos(ndx_patch) + self._get_random_offset()
+
+        a1 = p_orig.get_global_patch_pos(ndx_patch)
+        a2 = self._get_random_offset()
+        attach_pos = a1 + a2
+
         p_new.set_position(p_orig.pos, attach_pos, beta)
 
         return p_new
@@ -166,7 +170,7 @@ class patchy_chain(object):
 
         #choose a random patch and create a new particle there
         i_patch = p_orig.pick_random_patch()
-        p_new = self.make_new_random_particle(p_orig, i_patch)
+        p_new = self.make_new_random_particle(p_orig,i_patch)
 
         print("Attempting to add a particle at particle",i_part,"patch",i_patch)
         print("\t",p_new)

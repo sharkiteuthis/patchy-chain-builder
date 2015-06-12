@@ -10,13 +10,14 @@ import numpy as np                                     #analysis:ignore
 import matplotlib.pyplot as plt                        #analysis:ignore
 
 #define "effectively zero" for e.g. checking norms of vectors
-EPSILON = 1e-15
+EPSILON = 1e-6
 
 #theta is zenith measured from z axis (0,pi)
 #phi is azimuthal measured from the x-axis (0,2*pi)
 #i.e. physics convention
-def spherical_to_euclid(s):
+def spherical_to_cartesian(s):
     assert s.shape == (3,)
+    assert s[0] > 0
     r = s[0]
     theta = s[1]
     phi = s[2]
@@ -26,14 +27,14 @@ def spherical_to_euclid(s):
     z = np.cos(theta)
     return r * np.asarray([x,y,z])
 
-def euclid_to_spherical(e):
+def cartesian_to_spherical(e):
     assert e.shape == (3,)
     r = np.sqrt(np.sum(e**2))
     theta = np.arccos(e[2]/r)
     phi = np.arctan2(e[1],e[0])
     return np.asarray([r,theta,phi])
 
-def dist_euclid(a,b):
+def dist_cartesian(a,b):
     assert a.shape == b.shape
     assert a.shape == (3,)
     return np.linalg.norm(a-b)
@@ -44,10 +45,10 @@ def dist_spherical(s1,s2):
 
     #TODO you can save 2 sin/cos calls by computing the explicit expression
     # and using that here
-    e1 = spherical_to_euclid(s1)
-    e2 = spherical_to_euclid(s2)
+    e1 = spherical_to_cartesian(s1)
+    e2 = spherical_to_cartesian(s2)
 
-    return dist_euclid(e1,e2)
+    return dist_cartesian(e1,e2)
 
 def normalize(v):
     norm=np.linalg.norm(v)
