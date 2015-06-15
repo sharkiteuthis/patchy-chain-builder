@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt                        #analysis:ignore
 
 from generic_math import *
 from patchy_particle import *
+from patchy_chain import *
 
 ################################################################################
 ################################################################################
@@ -103,7 +104,7 @@ class TestParticle(unittest.TestCase):
         p = particle(1.0,1)
         s = np.asarray([1, np.pi/2, 2*np.pi/3])
         a = spherical_to_cartesian(s)
-        p.set_position(np.asarray([0,0,0]), spherical_to_cartesian(s), 0)
+        p.set_position(np.asarray([0,0,0]), spherical_to_cartesian(s), np.asarray([0,0,0]), 0)
 
         #center position should be twice the connecting axis
         self.assertAlmostEqual(p.pos[0], 2*a[0], delta=EPSILON)
@@ -132,7 +133,7 @@ class TestParticle(unittest.TestCase):
         p = particle(1.0,1)
         s = np.asarray([1, np.pi/2, 2*np.pi/3])
         a = spherical_to_cartesian(s)
-        p.set_position(np.asarray([0,0,0]), spherical_to_cartesian(s), np.pi)
+        p.set_position(np.asarray([0,0,0]), spherical_to_cartesian(s), np.asarray([0,0,0]), np.pi)
 
         #center position should be twice the connecting axis
         self.assertAlmostEqual(p.pos[0], 2*a[0], delta=EPSILON)
@@ -154,6 +155,24 @@ class TestParticle(unittest.TestCase):
         self.assertAlmostEqual(x3[1],np.sin(np.pi/3),delta=EPSILON)
         self.assertAlmostEqual(x3[2],0,delta=EPSILON)
 
+class TestChain(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(42)
+
+    #make sure that when we make a new particle, it *never* conflicts with it's parent
+    def test_no_parent_reject(self):
+        def setUp(self):
+            x = np.random.randint(1<<31)
+            np.random.seed(x)
+            print("TestChain random seed:,",x)
+
+        for i in range(10000):
+            c = patchy_chain(1.0)
+            self.assertTrue(len(c) == 1)
+            c.attempt_add_particle()
+            if len(c) != 2:
+                print("TestChain test",i,"failed.")
+            self.assertTrue(len(c) == 2)
+
 
 unittest.main()
-

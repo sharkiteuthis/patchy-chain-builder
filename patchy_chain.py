@@ -28,10 +28,16 @@ from patchy_particle import *
 ################################################################################
 
 class patchy_chain(object):
-    def __init__(self):
+    def __init__(self,p_ternary,verbose_level=0):
+        #p of making a coordination 3 node
+        self.p_ternary_coordination = p_ternary
+
+        self.verbose_level = verbose_level
+
         self.open_patch_dict = {}
         self.chain_dict = {}
         self.N = 0
+        self.N3 = 0
 
         self.__define_chain_properties()
 
@@ -50,13 +56,12 @@ class patchy_chain(object):
         self.add_particle_to_cell_list(p)
         self.N += 1
 
-        print("First particle:")
-        print("\t",p)
+        if self.verbose_level == 1:
+            print("First particle:")
+            print("\t",p)
 
 
     def __define_chain_properties(self):
-        #p of making a coordination 3 node
-        self.p_ternary_coordination = 0.0
 
         #average and stdev of particle radius
         self.r_avg = 1.0
@@ -82,10 +87,10 @@ class patchy_chain(object):
 
     def _choose_radius(self):
         #bound this so we are guaranteed to have correct cell lists
-        r = np.random.normal(self.r_avg,self.r_std)
-        while r < 0 or np.abs(self.r_avg-r) > self.normal_cutoff * self.r_std:
-            print("Produced inappropriate r in _choose_radius():",r)
+        while True:
             r = np.random.normal(self.r_avg,self.r_std)
+            if r > 0 and np.abs(self.r_avg-r) < self.normal_cutoff * self.r_std:
+                break
 
         return r
 
@@ -93,17 +98,17 @@ class patchy_chain(object):
     # "Introduce a little anarchy. Upset the established order, and
     # everything becomes chaos. I'm an agent of chaos. Oh, and you know the
     # thing about chaos? It's fair!"
-    def _get_random_offset(self):
+    def _get_random_offset_spherical(self):
         #bound this so that dr > 0 and we are guaranteed to have correct cell lists
-        dr = np.random.normal(self.dr_avg,self.dr_std)
-        while dr < 0 or np.abs(self.dr_avg-dr) > self.normal_cutoff * self.dr_std:
-            print("Produced inappropriate dr in get_random_offset():",dr)
+        while True:
             dr = np.random.normal(self.dr_avg,self.dr_std)
+            if dr > 0 and np.abs(self.dr_avg-dr) < self.normal_cutoff * self.dr_std:
+                break
 
         dphi = np.random.normal(0,self.dphi)
         dtheta = np.random.normal(0,self.dtheta)
 
-        return spherical_to_cartesian(np.asarray([dr,dtheta,dphi]))
+        return np.asarray([dr,dtheta,dphi])
 
     def _generate_cells_to_check(self,c):
         #TIP: if reducing cutoff range, implement the below check
@@ -122,17 +127,27 @@ class patchy_chain(object):
         for c in self._generate_cells_to_check(new_cell):
             for p in self.cell_dict[c]:
                 if dist_cartesian(p_new.pos,p.pos) < (p_new.radius + p.radius):
-                    print("\tRejecting new particle")
-                    print("\tdist = ",dist_cartesian(p_new.pos,p.pos))
-                    print("\tradii = ", p_new.radius + p.radius)
-                    print("\trejecting due to particle:")
-                    print("\t",p)
+                    if self.verbose_level == 2:
+                        print("\tRejecting new particle")
+                        print("\tdist = ",dist_cartesian(p_new.pos,p.pos))
+                        print("\tradii = ", p_new.radius + p.radius)
+                        print("\trejecting due to particle:")
+                        print("\t",p)
                     return False
 
         return True
 
     def __len__(self):
         return self.N
+
+    def __repr__(self):
+        return "Chain of {} particles, {} of coordination 3.".format(self.N,self.N3)
+
+    #level 0 - default. Nothing.
+    #level 1 - basic info
+    #level 2 - complete info
+    def set_verbose_level(self,level):
+        self.verbose_level = level
 
     #needs to return a tuple - ndarray is not hashable
     def get_cell_list_ndx(self, p):
@@ -153,11 +168,10 @@ class patchy_chain(object):
         beta = self._get_patch_axis_rotation_angle()
 
 
-        a1 = p_orig.get_global_patch_pos(ndx_patch)
-        a2 = self._get_random_offset()
-        attach_pos = a1 + a2
+        x_patch_center = p_orig.get_global_patch_pos(ndx_patch)
+        r_deviation = self._get_random_offset_spherical()
 
-        p_new.set_position(p_orig.pos, attach_pos, beta)
+        p_new.set_position(p_orig.pos, x_patch_center, r_deviation, beta)
 
         return p_new
 
@@ -170,22 +184,31 @@ class patchy_chain(object):
 
         #choose a random patch and create a new particle there
         i_patch = p_orig.pick_random_patch()
-        p_new = self.make_new_random_particle(p_orig,i_patch)
 
-        print("Attempting to add a particle at particle",i_part,"patch",i_patch)
-        print("\t",p_new)
+        while True:
+            p_new = self.make_new_random_particle(p_orig,i_patch)
+            if p_new != None:
+                break
+
+        if self.verbose_level == 2:
+            print("Attempting to add a particle at particle",i_part,"patch",i_patch)
+            print("\t",p_new)
 
         accept = self._calculate_accept(p_new)
 
         #the new particle is acceptable. Bookkeepping time!
         if accept:
-            print("\tAccepting new particle.")
+            if self.verbose_level == 1 and np.mod(N,10) == 0:
+                print("\tAccepting new particle ({}).".format(self.N))
             self.do_add_particle(p_new, p_orig, i_part, i_patch)
 
     def do_add_particle(self, p_new, p_orig, orig_part, orig_patch):
-        self.chain_dict[self.N] = p_new     #make sure we can access the particle
+        #make sure we can access the particle
+        self.chain_dict[self.N] = p_new
         self.open_patch_dict[self.N] = len(p_new.open_patches)
         self.N +=1
+        if p_new.coordination == 3:
+            self.N3 += 1
 
         #check if we have closed off the chain at the particle where we added
         #the new particle
@@ -198,10 +221,10 @@ class patchy_chain(object):
 
         self.add_particle_to_cell_list(p_new)
 
-    def visualize(self):
+    def visualize(self,spheres=True,numbers=False):
         #stole this kludge from here:
         # http://stackoverflow.com/questions/8130823/set-matplotlib-3d-plot-aspect-ratio
-        def axisEqual3D(ax):
+        def axis_equal_3D(ax):
             extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
             sz = extents[:,1] - extents[:,0]
             centers = np.mean(extents, axis=1)
@@ -210,31 +233,78 @@ class patchy_chain(object):
             for ctr, dim in zip(centers, 'xyz'):
                 getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
 
-        def draw_sphere(r,orig,ax):
+        def bounding_box(ax,ax_min,ax_max):
+            for x in (ax_min[0],ax_min[0]):
+                for y in (ax_min[1],ax_min[1]):
+                    for z in (ax_min[2],ax_min[2]):
+                        ax.plot([x,y,z], 'w')
+
+        def draw_sphere(r,orig,ax,color):
+            #stolen from here, which has more good stuff about plotting arrows, etc.
+            #  http://stackoverflow.com/questions/11140163/python-matplotlib-plotting-a-3d-cube-a-sphere-and-a-vector
             u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
             x = orig[0] + r * np.cos(u)*np.sin(v)
             y = orig[1] + r * np.sin(u)*np.sin(v)
             z = orig[2] + r * np.cos(v)
-            ax.plot_wireframe(x, y, z, color="r")
+            ax.plot_wireframe(x, y, z, color=color)
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
+
+        ax_min = np.zeros(3)
+        ax_max = np.zeros(3)
 
         for i in self.chain_dict:
             radius = self.chain_dict[i].radius
             x = self.chain_dict[i].pos
             #TODO: Color by open patches?
-            #TODO: size particles appropriately
-            ax.scatter(x[0],x[1],x[2])
-            #draw_sphere(radius,x,ax)
-            ax.text(x[0],x[1],x[2],str(i))
 
-        axisEqual3D(ax)
+            if self.chain_dict[i].coordination == 3:
+                c = 'b'
+            else:
+                c = 'r'
+
+            if spheres:
+                draw_sphere(radius,x,ax,c)
+            else:
+                ax.scatter(x[0],x[1],x[2],color=c)
+
+            if numbers:
+                ax.text(x[0],x[1],x[2],str(i))
+
+            ax_min = np.min(np.vstack((ax_min,x)),axis=0)
+            ax_max = np.min(np.vstack((ax_min,x)),axis=0)
+
+        #bounding_box(ax, ax_min, ax_max)
+        axis_equal_3D(ax)
         plt.show()
 
-    def print_info(self):
-        for i in self.chain_dict:
-            print(self.chain_dict[i].pos)
-        for i in self.open_patch_dict:
-            print("Partcle",i,"has",self.open_patch_dict[i],"open patches.")
+    def print_info(self, verbose_level=None):
+        print(self)
 
+        verbose_level_save = None
+        if verbose_level:
+            verbose_level_save = self.verbose_level
+            self.verbose_level = verbose_level
+
+        if self.verbose_level == 2:
+            for i in self.chain_dict:
+                print(self.chain_dict[i].pos)
+        elif self.verbose_level == 1:
+            for i in self.open_patch_dict:
+                print("Partcle",i,"has",self.open_patch_dict[i],"open patches.")
+
+        if verbose_level:
+            self.verbose_level = verbose_level_save
+
+    def write_pdb(self, f):
+        for i in self.chain_dict:
+            x = self.chain_dict[i].pos
+            name = 'S'
+            if self.chain_dict[i].coordination == 3:
+                name = 'P'
+
+            line = "ATOM  {:>5d}   {}  ASP A   1     {:>8.3f}{:>8.3f}{:>8.3f}  1.00 20.00      01   {}  ".format(\
+                        i, name, x[0], x[1], x[2], name)
+            f.write(line)
+        f.close()
