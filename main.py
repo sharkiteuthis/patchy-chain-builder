@@ -18,13 +18,20 @@ matplotlib.rcParams['svg.fonttype'] = 'none'
 
 plt.close("all")
 
-N_tot = 1000
+N_tot = 20
 
 c = patchy_chain(0.05)  # 5% chance of creating a coordination 3 particle
 while len(c) < N_tot:
     c.attempt_add_particle()
 
-#TODO put bounds on visualize?
-#c.visualize()
+c.visualize()
 #c.print_info()
+
+#TODO: the pdb writer still isn't working very well - for some reason PyMol will
+# randomly move atoms around - see the pdb_bug folder
+#
+#To make a nice looking PyMol chain:
+#
+# color red, name cq; show spheres; set sphere_scale, 0.75
+#
 c.write_pdb(open("chain.pdb",'w'))

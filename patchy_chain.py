@@ -300,11 +300,12 @@ class patchy_chain(object):
     def write_pdb(self, f):
         for i in self.chain_dict:
             x = self.chain_dict[i].pos
-            name = 'S'
+            name = 'CS'
             if self.chain_dict[i].coordination == 3:
-                name = 'P'
+                name = 'CQ'
 
-            line = "ATOM  {:>5d}   {}  ASP A   1     {:>8.3f}{:>8.3f}{:>8.3f}  1.00 20.00      01   {}  ".format(\
-                        i, name, x[0], x[1], x[2], name)
+            line = "ATOM  {:>5d} {:>3}  ASP A    1 {:>8.3f}{:>8.3f}{:>8.3f}  1.00  0.00      01   C  \n".format(\
+                        i+1, name, x[0], x[1], x[2])
             f.write(line)
+        f.write("END\n")
         f.close()
