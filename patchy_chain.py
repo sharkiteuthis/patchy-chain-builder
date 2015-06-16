@@ -75,7 +75,7 @@ class patchy_chain(object):
 
         #average and stdev of particle radius
         self.r_avg = 1.0
-        self.r_std = 0.1
+        self.r_std = self.r_avg/10
 
         #average and stdev of particle separation
         #I know shit looks crazy, but the average dr is chosen to be 10 orders
@@ -191,9 +191,9 @@ class patchy_chain(object):
 
     #needs to return a tuple - ndarray is not hashable
     def get_cell_list_ndx(self, p):
-        return (int(np.mod(p.pos[0],self.cell_width)), \
-                int(np.mod(p.pos[1],self.cell_width)), \
-                int(np.mod(p.pos[2],self.cell_width)))
+        return (int(p.pos[0]/self.cell_width), \
+                int(p.pos[1]/self.cell_width), \
+                int(p.pos[2]/self.cell_width))
 
     def add_particle_to_cell_list(self,p):
         ndx = self.get_cell_list_ndx(p)
