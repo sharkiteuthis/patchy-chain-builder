@@ -191,6 +191,7 @@ class patchy_chain(object):
 
     #needs to return a tuple - ndarray is not hashable
     def get_cell_list_ndx(self, p):
+        #int() is effectively floor(), which is necessary (as opposed to round())
         return (int(p.pos[0]/self.cell_width), \
                 int(p.pos[1]/self.cell_width), \
                 int(p.pos[2]/self.cell_width))
