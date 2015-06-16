@@ -41,14 +41,20 @@ class patchy_chain(object):
 
         self.__define_chain_properties()
 
+
         #this is guaranteed correct since we have bounded our normal distributions
         # with self.normal_cutoff
-        self.interaction_cutoff = self.r_avg + self.dr_avg + \
-                                self.normal_cutoff * (self.r_std + self.dr_std)
+        #self.interaction_cutoff = self.r_avg + self.dr_avg + \
+        #                        self.normal_cutoff * (self.r_std + self.dr_std)
 
-        #TODO: I think this is safe and correct, but it needs unit testing
-        #self.interaction_cutoff = self.r_avg + self.normal_cutoff * self.r_std
+        #TIP: I think this is safe and correct instead of worrying about the dr
+        # offset which is by definition not part of the steric interaction
+        self.interaction_cutoff = self.r_avg + self.normal_cutoff * self.r_std
 
+        #TODO cell-list-optimize: I think the optimal value here is probably
+        # cell_range = 2, since that reduces spurious comparisons, but it also
+        # introduces additional checks in _generate_cells_to_check, so that
+        # tradeoff needs to be profiled
         self.cell_range = 1
         self.cell_width = self.interaction_cutoff/self.cell_range
         self.cell_dict = defaultdict(list)
@@ -85,6 +91,19 @@ class patchy_chain(object):
         self.dphi = np.pi/12
         self.dtheta = np.pi/12
 
+    # totally dumb O(N^2) check for particle overlaps, for debugging purposes
+    def _check_all_particles_for_overlap_DEBUG(self):
+        for i in self.chain_dict:
+            p1 = self.chain_dict[i]
+            for j in self.chain_dict:
+                p2 = self.chain_dict[j]
+
+                #self-checks are bad, also eliminate duplicate checks
+                if i < j:
+                    if dist_cartesian(p1.pos,p2.pos) < (p1.radius + p2.radius):
+                        return True
+        return False
+
     # rotational degree of freedom between the two patches
     def _get_patch_axis_rotation_angle(self):
         return np.random.rand() * 2 * np.pi
@@ -119,7 +138,7 @@ class patchy_chain(object):
         # cell-list-optimize and make sure that we aren't doing spurious cell list
         # checks, etc
         # NONE of the cell-list-optimize code has been tested, unit-tested, etc
-        assert self.cell_range <= 2
+        assert self.cell_range == 1
 
         #TODO cell-list-optimize: avoid calling into the one in generic_math since
         # it uses np.asarray() which is somewhat expensive and not needed here
