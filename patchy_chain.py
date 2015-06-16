@@ -45,6 +45,10 @@ class patchy_chain(object):
         # with self.normal_cutoff
         self.interaction_cutoff = self.r_avg + self.dr_avg + \
                                 self.normal_cutoff * (self.r_std + self.dr_std)
+
+        #TODO: I think this is safe and correct, but it needs unit testing
+        #self.interaction_cutoff = self.r_avg + self.normal_cutoff * self.r_std
+
         self.cell_range = 1
         self.cell_width = self.interaction_cutoff/self.cell_range
         self.cell_dict = defaultdict(list)
@@ -110,21 +114,38 @@ class patchy_chain(object):
 
         return np.asarray([dr,dtheta,dphi])
 
-    def _generate_cells_to_check(self,c):
-        #TIP: if reducing cutoff range, implement the below check
+    def _generate_cells_to_check(self,c,this_r):
+        #TODO cell-list-optimize: if this assert starts triggering, search for
+        # cell-list-optimize and make sure that we aren't doing spurious cell list
+        # checks, etc
+        # NONE of the cell-list-optimize code has been tested, unit-tested, etc
         assert self.cell_range <= 2
+
+        #TODO cell-list-optimize: avoid calling into the one in generic_math since
+        # it uses np.asarray() which is somewhat expensive and not needed here
+        # (that's worth checking with the profiler, but is probably true)
+        #
+        #def tuple_cartesian_dist(a,b):
+        #    return np.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)
+        #
+        #cell_dist = lambda c1,c2 : self.cell_width * tuple_cartesian_dist(c1,c2)
+
         cell_range_to_check = lambda : itertools.chain(range(-self.cell_range,0),range(self.cell_range+1))
-        #cell_dist = lambda c1,c2 : self.cell_width * dist_cartesian(np.asarray(c1), np.asarray(c2))
+
         for i in cell_range_to_check():
             for j in cell_range_to_check():
                 for k in cell_range_to_check():
-                    #if cell_dist((c[0]+i,c[1]+j,c[2]+k), (i,j,k)) <= 2 * self.interaction_cutoff:
-                    yield (i,j,k)
+                    new_cell = (c[0]+i,c[1]+j,c[2]+k)
+                    #TODO cell-list-optimize: if reducing cutoff range, implement the below check
+                    #       and comment out the other yield
+                    #if cell_dist(new_cell, c) - (this_r + self.interaction_cutoff) > EPSILON:
+                    #   yield new_cell
+                    yield new_cell
 
     # simple steric interaction for now
     def _calculate_accept(self,p_new):
         new_cell = self.get_cell_list_ndx(p_new)
-        for c in self._generate_cells_to_check(new_cell):
+        for c in self._generate_cells_to_check(new_cell, p_new.radius):
             for p in self.cell_dict[c]:
                 if dist_cartesian(p_new.pos,p.pos) < (p_new.radius + p.radius):
                     if self.verbose_level == 2:

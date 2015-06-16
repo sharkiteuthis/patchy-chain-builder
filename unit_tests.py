@@ -159,6 +159,14 @@ class TestChain(unittest.TestCase):
     def setUp(self):
         np.random.seed(42)
 
+    def test_cell_list(self):
+        c = patchy_chain(1.0)
+        x = list(c._generate_cells_to_check((5,5,5),1.0))
+        self.assertTrue(len(x) == 27)
+        #TODO: check all the cells to make sure we're getting the correct ones...
+
+    #TODO: a lot more unit tests for this class....
+
     #make sure that when we make a new particle, it *never* conflicts with it's parent
     def test_no_parent_reject(self):
         def setUp(self):
