@@ -101,10 +101,10 @@ class TestParticle(unittest.TestCase):
         np.random.seed(42)
 
     def test_set_postition(self):
-        p = particle(1.0,1)
+        p = particle(1)
         s = np.asarray([1, np.pi/2, 2*np.pi/3])
         a = spherical_to_cartesian(s)
-        p.set_position(np.asarray([0,0,0]), spherical_to_cartesian(s), np.asarray([0,0,0]), 0)
+        p.set_position(np.asarray([0,0,0]), spherical_to_cartesian(s), np.asarray([0,0,0]),beta_DEBUG=0)
 
         #center position should be twice the connecting axis
         self.assertAlmostEqual(p.pos[0], 2*a[0], delta=EPSILON)
@@ -130,10 +130,10 @@ class TestParticle(unittest.TestCase):
 
         #now if we do it with a rotation about the patch axis by pi, it should
         # just flip the other two patches
-        p = particle(1.0,1)
+        p = particle(1)
         s = np.asarray([1, np.pi/2, 2*np.pi/3])
         a = spherical_to_cartesian(s)
-        p.set_position(np.asarray([0,0,0]), spherical_to_cartesian(s), np.asarray([0,0,0]), np.pi)
+        p.set_position(np.asarray([0,0,0]), spherical_to_cartesian(s), np.asarray([0,0,0]), beta_DEBUG=np.pi)
 
         #center position should be twice the connecting axis
         self.assertAlmostEqual(p.pos[0], 2*a[0], delta=EPSILON)
