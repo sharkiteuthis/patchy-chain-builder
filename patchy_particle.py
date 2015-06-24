@@ -158,7 +158,7 @@ class particle():
         
         #this is the rotational degree of freedom that the patch has about the
         # axis connecting the centers of the particles
-        if beta_DEBUG:
+        if beta_DEBUG != None:
             patch_axis_rotation = beta_DEBUG
         else:
             patch_axis_rotation = self._get_patch_axis_rotation_angle()
