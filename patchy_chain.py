@@ -39,17 +39,7 @@ class patchy_chain(object):
         self.N = 0
         self.N3 = 0
 
-        self.__define_chain_properties()
-
-
-        #this is guaranteed correct since we have bounded our normal distributions
-        # with self.normal_cutoff
-        #self.interaction_cutoff = self.r_avg + self.dr_avg + \
-        #                        self.normal_cutoff * (self.r_std + self.dr_std)
-
-        #TIP: I think this is safe and correct instead of worrying about the dr
-        # offset which is by definition not part of the steric interaction
-        self.interaction_cutoff = self.r_avg + self.normal_cutoff * self.r_std
+        self.interaction_cutoff = get_patchy_particle_interaction_cutoff()
 
         #TODO cell-list-optimize: I think the optimal value here is probably
         # cell_range = 2, since that reduces spurious comparisons, but it also
@@ -60,7 +50,7 @@ class patchy_chain(object):
         self.cell_dict = defaultdict(list)
 
         #add the first particle at the origin
-        p = particle(self._choose_radius(), self.p_ternary_coordination)
+        p = particle(self.p_ternary_coordination)
         self.chain_dict[self.N] = p
         self.open_patch_dict[self.N] = len(p.open_patches)
         self.add_particle_to_cell_list(p)
@@ -71,25 +61,6 @@ class patchy_chain(object):
             print("\t",p)
 
 
-    def __define_chain_properties(self):
-
-        #average and stdev of particle radius
-        self.r_avg = 1.0
-        self.r_std = self.r_avg/10
-
-        #average and stdev of particle separation
-        #I know shit looks crazy, but the average dr is chosen to be 10 orders
-        #of magnitude smaller than r, and the std deviation of dr is chosen to be
-        # half an order of magnitude smaller than dr. Why? Just because.
-        self.dr_avg = self.r_avg/10
-        self.dr_std = self.r_avg/(10**(3/2))
-
-        # cutoff normal distributions to ensure correctness of cell lists
-        self.normal_cutoff = 4          #cutoff at 4, units of std dev
-
-        #  *shrug*
-        self.dphi = np.pi/12
-        self.dtheta = np.pi/12
 
     # totally dumb O(N^2) check for particle overlaps, for debugging purposes
     def _check_all_particles_for_overlap_DEBUG(self):
@@ -102,36 +73,7 @@ class patchy_chain(object):
                 if i < j:
                     if dist_cartesian(p1.pos,p2.pos) < (p1.radius + p2.radius):
                         return True
-        return False
-
-    # rotational degree of freedom between the two patches
-    def _get_patch_axis_rotation_angle(self):
-        return np.random.rand() * 2 * np.pi
-
-    def _choose_radius(self):
-        #bound this so we are guaranteed to have correct cell lists
-        while True:
-            r = np.random.normal(self.r_avg,self.r_std)
-            if r > 0 and np.abs(self.r_avg-r) < self.normal_cutoff * self.r_std:
-                break
-
-        return r
-
-    # https://youtu.be/5iwf20t9J1k?t=34
-    # "Introduce a little anarchy. Upset the established order, and
-    # everything becomes chaos. I'm an agent of chaos. Oh, and you know the
-    # thing about chaos? It's fair!"
-    def _get_random_offset_spherical(self):
-        #bound this so that dr > 0 and we are guaranteed to have correct cell lists
-        while True:
-            dr = np.random.normal(self.dr_avg,self.dr_std)
-            if dr > 0 and np.abs(self.dr_avg-dr) < self.normal_cutoff * self.dr_std:
-                break
-
-        dphi = np.random.normal(0,self.dphi)
-        dtheta = np.random.normal(0,self.dtheta)
-
-        return np.asarray([dr,dtheta,dphi])
+        return False 
 
     def _generate_cells_to_check(self,c,this_r):
         #TODO cell-list-optimize: if this assert starts triggering, search for
@@ -202,17 +144,13 @@ class patchy_chain(object):
 
 
     def make_new_random_particle(self, p_orig, ndx_patch):
-        p_new = particle(self._choose_radius(), self.p_ternary_coordination)
-
-        #this is the rotational degree of freedom that the patch has about the
-        # axis connecting the centers of the particles
-        beta = self._get_patch_axis_rotation_angle()
+        p_new = particle(self.p_ternary_coordination)
 
 
         x_patch_center = p_orig.get_global_patch_pos(ndx_patch)
-        r_deviation = self._get_random_offset_spherical()
+        r_deviation = p_orig.get_patch_center_offset_spherical()
 
-        p_new.set_position(p_orig.pos, x_patch_center, r_deviation, beta)
+        p_new.set_position(p_orig.pos, x_patch_center, r_deviation)
 
         return p_new
 
