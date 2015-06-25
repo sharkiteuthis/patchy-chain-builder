@@ -56,7 +56,7 @@ class patchy_chain(object):
         self.add_particle_to_cell_list(p)
         self.N += 1
 
-        if self.verbose_level == 1:
+        if self.verbose_level >= 1:
             print("First particle:")
             print("\t",p)
 
@@ -73,7 +73,7 @@ class patchy_chain(object):
                 if i < j:
                     if dist_cartesian(p1.pos,p2.pos) < (p1.radius + p2.radius):
                         return True
-        return False 
+        return False
 
     def _generate_cells_to_check(self,c,this_r):
         #TODO cell-list-optimize: if this assert starts triggering, search for
@@ -177,7 +177,7 @@ class patchy_chain(object):
 
         #the new particle is acceptable. Bookkeepping time!
         if accept:
-            if self.verbose_level == 1 and np.mod(N,10) == 0:
+            if self.verbose_level >= 1 and np.mod(N,10) == 0:
                 print("\tAccepting new particle ({}).".format(self.N))
             self.do_add_particle(p_new, p_orig, i_part, i_patch)
 
@@ -269,7 +269,8 @@ class patchy_chain(object):
         if self.verbose_level == 2:
             for i in self.chain_dict:
                 print(self.chain_dict[i].pos)
-        elif self.verbose_level == 1:
+
+        if self.verbose_level >= 1:
             for i in self.open_patch_dict:
                 print("Partcle",i,"has",self.open_patch_dict[i],"open patches.")
 
